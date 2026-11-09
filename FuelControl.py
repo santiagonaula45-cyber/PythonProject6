@@ -11,15 +11,17 @@ st.write(
     " vehículo."
 )
 
-# Inicializar estado para guardar los registros en memoria durante la sesión
+# Inicializar estado con un DataFrame vacío
 if "data" not in st.session_state:
-  st.session_state.data = pd.DataFrame({
-      "Fecha": ["2026-10-01", "2026-10-15", "2026-11-01"],
-      "Kilometraje (km)": [12500, 12950, 13420],
-      "Galones / Litros": [11.5, 12.0, 11.8],
-      "Costo Total ($)": [25.00, 26.40, 25.96],
-      "Precio por Unidad ($)": [2.17, 2.20, 2.20],
-  })
+  st.session_state.data = pd.DataFrame(
+      columns=[
+          "Fecha",
+          "Kilometraje (km)",
+          "Galones / Litros",
+          "Costo Total ($)",
+          "Precio por Unidad ($)",
+      ]
+  )
 
 # Menú lateral de opciones
 menu = st.sidebar.selectbox(
@@ -38,7 +40,10 @@ if menu == "📊 Resumen y Métricas":
   st.header("Resumen General del Vehículo")
 
   if df.empty:
-    st.info("No hay registros todavía. Ve a 'Registrar Carga' para agregar.")
+    st.info(
+        "👋 ¡Bienvenido! Aún no hay registros. Ve a la sección **'Registrar"
+        " Carga'** en el menú lateral para agregar tu primera carga."
+    )
   else:
     total_gasto = df["Costo Total ($)"].sum()
     total_combustible = df["Galones / Litros"].sum()
@@ -60,7 +65,7 @@ if menu == "📊 Resumen y Métricas":
       chart_data = df.set_index("Fecha")["Kilometraje (km)"]
       st.line_chart(chart_data)
     else:
-      st.write("Agrega más registros para ver la gráfica de evolución.")
+      st.write("Agrega más de un registro para ver la gráfica de evolución.")
 
 elif menu == "➕ Registrar Carga":
   st.header("Registrar Nueva Carga de Combustible")
@@ -69,54 +74,30 @@ elif menu == "➕ Registrar Carga":
     col1, col2 = st.columns(2)
     with col1:
       fecha = st.date_input("Fecha de carga")
+      # Si está vacío, inicia en 0. Si ya hay datos, toma el último kilometraje como base
+      ultimo_km = (
+          float(df["Kilometraje (km)"].max()) if not df.empty else 0.0
+      )
       kilometraje = st.number_input(
           "Kilometraje actual (Odómetro)",
           min_value=0.0,
           step=1.0,
-          value=float(df["Kilometraje (km)"].max()) if not df.empty else 0.0,
+          value=ultimo_km,
       )
     with col2:
       cantidad = st.number_input(
-          "Cantidad (Galones o Litros)", min_value=0.0, step=0.1, value=10.0
+          "Cantidad (Galones o Litros)", min_value=0.0, step=0.1, value=0.0
       )
       costo_total = st.number_input(
-          "Costo Total ($)", min_value=0.0, step=0.01, value=22.0
+          "Costo Total ($)", min_value=0.0, step=0.01, value=0.0
       )
 
     submitted = st.form_submit_button("Guardar Carga")
     if submitted:
-      precio_unidad = costo_total / cantidad if cantidad > 0 else 0
-      nuevo_registro = pd.DataFrame({
-          "Fecha": [str(fecha)],
-          "Kilometraje (km)": [kilometraje],
-          "Galones / Litros": [cantidad],
-          "Costo Total ($)": [costo_total],
-          "Precio por Unidad ($)": [precio_unidad],
-      })
-      st.session_state.data = pd.concat([df, nuevo_registro], ignore_index=True)
-      st.success("¡Carga registrada exitosamente!")
-
-elif menu == "📋 Historial de Cargas":
-  st.header("Historial Detallado de Registros")
-  if df.empty:
-    st.info("No hay registros disponibles.")
-  else:
-    st.dataframe(df, use_container_width=True)
-
-    if st.button("Eliminar último registro"):
-      if not df.empty:
-        st.session_state.data = df.iloc[:-1].reset_index(drop=True)
-        st.rerun()
-
-elif menu == "⚙️ Configuración y Datos":
-  st.header("Exportar / Importar Datos")
-  st.write("Descarga tus datos actuales en formato CSV para respaldo.")
-
-  if not df.empty:
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        label="Descargar datos en CSV",
-        data=csv,
-        file_name="control_combustible.csv",
-        mime="text/csv",
-    )
+      if cantidad > 0 and costo_total > 0:
+        precio_unidad = costo_total / cantidad
+        nuevo_registro = pd.DataFrame({
+            "Fecha": [str(fecha)],
+            "Kilometraje (km)": [kilometraje],
+            "Galones / Litros": [cantidad],
+            "Costo Total ($)":
