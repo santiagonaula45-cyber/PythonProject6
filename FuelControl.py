@@ -74,7 +74,6 @@ elif menu == "➕ Registrar Carga":
     col1, col2 = st.columns(2)
     with col1:
       fecha = st.date_input("Fecha de carga")
-      # Si está vacío, inicia en 0. Si ya hay datos, toma el último kilometraje como base
       ultimo_km = (
           float(df["Kilometraje (km)"].max()) if not df.empty else 0.0
       )
@@ -100,4 +99,40 @@ elif menu == "➕ Registrar Carga":
             "Fecha": [str(fecha)],
             "Kilometraje (km)": [kilometraje],
             "Galones / Litros": [cantidad],
-            "Costo Total ($)":
+            "Costo Total ($)": [costo_total],
+            "Precio por Unidad ($)": [precio_unidad],
+        })
+        st.session_state.data = pd.concat([df, nuevo_registro], ignore_index=True)
+        st.success("¡Carga registrada exitosamente!")
+      else:
+        st.warning(
+            "Por favor ingresa una cantidad y un costo mayor a cero para"
+            " guardar la carga."
+        )
+
+elif menu == "📋 Historial de Cargas":
+  st.header("Historial Detallado de Registros")
+  if df.empty:
+    st.info("No hay registros disponibles todavía.")
+  else:
+    st.dataframe(df, use_container_width=True)
+
+    if st.button("Eliminar último registro"):
+      if not df.empty:
+        st.session_state.data = df.iloc[:-1].reset_index(drop=True)
+        st.rerun()
+
+elif menu == "⚙️ Configuración y Datos":
+  st.header("Exportar / Importar Datos")
+  st.write("Descarga tus datos actuales en formato CSV para respaldo.")
+
+  if df.empty:
+    st.warning("No hay datos para exportar todavía.")
+  else:
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="Descargar datos en CSV",
+        data=csv,
+        file_name="control_combustible.csv",
+        mime="text/csv",
+    )
